@@ -1,0 +1,152 @@
+from sqlalchemy import Boolean, Column, ForeignKey, Integer, String, DateTime, Enum, Text, JSON, Table
+from sqlalchemy.orm import relationship
+from sqlalchemy.sql import func
+import enum
+from app.db.base_class import Base
+
+# Association tables
+project_members = Table(
+    "project_members",
+    Base.metadata,
+    Column("project_id", Integer, ForeignKey("projects.id")),
+    Column("user_id", Integer, ForeignKey("users.id")),
+)
+
+class EntityType(str, enum.Enum):
+    SPEC = "spec"
+    PROJECT = "project"
+    LINT_RESULT = "lint_result"
+
+class NotificationType(str, enum.Enum):
+    COMMENT = "comment"
+    UPDATE = "update"
+    MENTION = "mention"
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    email = Column(String, unique=True, index=True)
+    hashed_password = Column(String)
+    full_name = Column(String)
+    role = Column(String)  # admin, engineer, pm
+    is_active = Column(Boolean, default=True)
+    is_superuser = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    companies = relationship("Company", back_populates="owner")
+    projects = relationship("Project", secondary=project_members, back_populates="members")
+    comments = relationship("Comment", back_populates="author")
+    notifications = relationship("Notification", back_populates="recipient")
+    notification_preferences = relationship("NotificationPreference", back_populates="user")
+
+class Company(Base):
+    __tablename__ = "companies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    description = Column(String, nullable=True)
+    owner_id = Column(Integer, ForeignKey("users.id"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    owner = relationship("User", back_populates="companies")
+    projects = relationship("Project", back_populates="company")
+
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    description = Column(String, nullable=True)
+    company_id = Column(Integer, ForeignKey("companies.id"))
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    company = relationship("Company", back_populates="projects")
+    members = relationship("User", secondary=project_members, back_populates="projects")
+    specs = relationship("Spec", back_populates="project")
+    comments = relationship("Comment", back_populates="project")
+
+class Spec(Base):
+    __tablename__ = "specs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, index=True)
+    description = Column(String, nullable=True)
+    version = Column(String)
+    status = Column(Enum("draft", "review", "approved", "archived", name="spec_status"))
+    file_path = Column(String)
+    project_id = Column(Integer, ForeignKey("projects.id"))
+    author_id = Column(Integer, ForeignKey("users.id"))
+    spec_metadata = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    project = relationship("Project", back_populates="specs")
+    lint_results = relationship("LintResult", back_populates="spec")
+    comments = relationship("Comment", back_populates="spec")
+
+class LintResult(Base):
+    __tablename__ = "lint_results"
+
+    id = Column(Integer, primary_key=True, index=True)
+    spec_id = Column(Integer, ForeignKey("specs.id"))
+    issues = Column(JSON)
+    summary = Column(String)
+    spec_metadata = Column(JSON, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    spec = relationship("Spec", back_populates="lint_results")
+    comments = relationship("Comment", back_populates="lint_result")
+
+class Comment(Base):
+    __tablename__ = "comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    content = Column(Text)
+    author_id = Column(Integer, ForeignKey("users.id"))
+    entity_type = Column(Enum(EntityType))
+    entity_id = Column(Integer)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    author = relationship("User", back_populates="comments")
+    project = relationship("Project", back_populates="comments")
+    spec = relationship("Spec", back_populates="comments")
+    lint_result = relationship("LintResult", back_populates="comments")
+
+class Notification(Base):
+    __tablename__ = "notifications"
+
+    id = Column(Integer, primary_key=True, index=True)
+    recipient_id = Column(Integer, ForeignKey("users.id"))
+    type = Column(Enum(NotificationType))
+    entity_type = Column(Enum(EntityType))
+    entity_id = Column(Integer)
+    message = Column(Text)
+    is_read = Column(Boolean, default=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+
+    # Relationships
+    recipient = relationship("User", back_populates="notifications")
+
+class NotificationPreference(Base):
+    __tablename__ = "notification_preferences"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"))
+    notification_type = Column(Enum(NotificationType))
+    is_enabled = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+
+    # Relationships
+    user = relationship("User", back_populates="notification_preferences") 
