@@ -114,6 +114,9 @@ class Comment(Base):
     author_id = Column(Integer, ForeignKey("users.id"))
     entity_type = Column(Enum(EntityType))
     entity_id = Column(Integer)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True)
+    spec_id = Column(Integer, ForeignKey("specs.id"), nullable=True)
+    lint_result_id = Column(Integer, ForeignKey("lint_results.id"), nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 

@@ -156,4 +156,44 @@ def read_lint_results(
         skip=skip,
         limit=limit
     )
-    return results 
+    return results
+
+@router.post("/specs", response_model=dict)
+def upload_spec(db: Session = Depends(deps.get_db)):
+    """Upload new spec (placeholder)."""
+    return {"msg": "Spec uploaded"}
+
+@router.get("/specs/{spec_id}/versions", response_model=dict)
+def get_spec_versions(spec_id: int, db: Session = Depends(deps.get_db)):
+    """Get spec version history (placeholder)."""
+    return {"msg": "Version history"}
+
+@router.get("/specs/{spec_id}/compare", response_model=dict)
+def compare_spec_versions(spec_id: int, to: str, db: Session = Depends(deps.get_db)):
+    """Compare spec versions (placeholder)."""
+    return {"msg": "Comparison result"}
+
+@router.post("/specs/{spec_id}/reviewers", response_model=dict)
+def assign_reviewers(spec_id: int, db: Session = Depends(deps.get_db)):
+    """Assign reviewers (placeholder)."""
+    return {"msg": "Reviewers assigned"}
+
+@router.delete("/specs/{spec_id}/reviewers/{reviewer_id}", response_model=dict)
+def remove_reviewer(spec_id: int, reviewer_id: int, db: Session = Depends(deps.get_db)):
+    """Remove reviewer (placeholder)."""
+    return {"msg": "Reviewer removed"}
+
+@router.post("/specs/{spec_id}/approve", response_model=dict)
+def approve_spec(spec_id: int, db: Session = Depends(deps.get_db)):
+    """Approve spec (placeholder)."""
+    return {"msg": "Spec approved"}
+
+@router.get("/specs/{spec_id}/download", response_model=dict)
+def download_spec(spec_id: int, db: Session = Depends(deps.get_db)):
+    """Download/export spec (placeholder)."""
+    return {"msg": "Spec downloaded"}
+
+@router.post("/specs/{spec_id}/duplicate", response_model=dict)
+def duplicate_spec(spec_id: int, db: Session = Depends(deps.get_db)):
+    """Duplicate/copy spec (placeholder)."""
+    return {"msg": "Spec duplicated"} 
