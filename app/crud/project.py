@@ -82,15 +82,20 @@ def delete_project(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
+
     # Verify user owns the company
     company = db.query(Company).filter(Company.id == db_project.company_id).first()
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company not found"
+        )
     if company.owner_id != company_owner_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
-    
+
     db.delete(db_project)
     db.commit()
-    return True 
+    return True
