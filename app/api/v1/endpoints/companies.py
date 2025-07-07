@@ -6,8 +6,15 @@ from app.api import deps
 from app.crud import company as crud
 from app.schemas.company import Company, CompanyCreate, CompanyUpdate
 from app.schemas.user import UserOut
+from app.db.models import User
 
 router = APIRouter()
+
+def get_user_email(db, user_id):
+    if not user_id:
+        return None
+    user = db.query(User).filter(User.id == user_id).first()
+    return user.email if user else None
 
 @router.get("/", response_model=List[Company])
 def read_companies(
@@ -25,7 +32,13 @@ def read_companies(
         limit=limit,
         owner_id=current_user.id
     )
-    return companies
+    result = []
+    for company in companies:
+        company_data = company.__dict__.copy()
+        company_data["created_by"] = get_user_email(db, company.owner_id)
+        company_data["updated_by"] = get_user_email(db, company.owner_id)  # If you add updated_by_id, use that here
+        result.append(company_data)
+    return result
 
 @router.post("/", response_model=Company)
 def create_company(
@@ -42,7 +55,10 @@ def create_company(
         company=company_in,
         owner_id=current_user.id
     )
-    return company
+    company_data = company.__dict__.copy()
+    company_data["created_by"] = current_user.email
+    company_data["updated_by"] = current_user.email
+    return company_data
 
 @router.get("/{company_id}", response_model=Company)
 def read_company(
@@ -65,7 +81,10 @@ def read_company(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
-    return company
+    company_data = company.__dict__.copy()
+    company_data["created_by"] = get_user_email(db, company.owner_id)
+    company_data["updated_by"] = get_user_email(db, company.owner_id)  # If you add updated_by_id, use that here
+    return company_data
 
 @router.put("/{company_id}", response_model=Company)
 def update_company(
@@ -84,7 +103,10 @@ def update_company(
         company=company_in,
         owner_id=current_user.id
     )
-    return company
+    company_data = company.__dict__.copy()
+    company_data["created_by"] = get_user_email(db, company.owner_id)
+    company_data["updated_by"] = current_user.email
+    return company_data
 
 @router.delete("/{company_id}", response_model=bool)
 def delete_company(

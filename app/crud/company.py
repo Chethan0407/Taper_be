@@ -2,7 +2,7 @@ from typing import List, Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
 
-from app.db.models import Company
+from app.db.models import Company, Project
 from app.schemas.company import CompanyCreate, CompanyUpdate
 
 def get_company(db: Session, company_id: int) -> Optional[Company]:
@@ -66,7 +66,13 @@ def delete_company(db: Session, company_id: int, owner_id: int) -> bool:
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
-    
+    # Prevent deletion if projects exist
+    projects = db.query(Project).filter(Project.company_id == company_id).all()
+    if projects:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot delete company with existing projects. Please delete all projects first."
+        )
     db.delete(db_company)
     db.commit()
     return True 

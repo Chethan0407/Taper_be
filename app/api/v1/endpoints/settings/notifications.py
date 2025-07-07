@@ -76,4 +76,4 @@ def patch_notifications(
     updated_prefs = db.query(crud_notification.NotificationPreference).filter(
         crud_notification.NotificationPreference.user_id == current_user.id
     ).all()
-    return {"preferences": updated_prefs} 
+    return {"preferences": updated_prefs}

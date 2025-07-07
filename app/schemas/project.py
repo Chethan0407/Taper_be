@@ -5,7 +5,7 @@ from typing import Optional
 class ProjectBase(BaseModel):
     name: str
     description: Optional[str] = None
-    company_id: int
+    company_id: Optional[int] = None
 
 class ProjectCreate(ProjectBase):
     pass

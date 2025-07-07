@@ -22,4 +22,5 @@ class CompanyInDBBase(CompanyBase):
         from_attributes = True
 
 class Company(CompanyInDBBase):
-    pass 
+    created_by: Optional[str] = None
+    updated_by: Optional[str] = None 

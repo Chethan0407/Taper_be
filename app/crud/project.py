@@ -55,18 +55,22 @@ def update_project(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="Project not found"
         )
-    
-    # Verify user owns the company
-    company = db.query(Company).filter(Company.id == db_project.company_id).first()
+    # Use new company_id if provided, else keep the old one
+    new_company_id = project.company_id if project.company_id is not None else db_project.company_id
+    company = db.query(Company).filter(Company.id == new_company_id).first()
+    if not company:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Company not found"
+        )
     if company.owner_id != company_owner_id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="Not enough permissions"
         )
-    
+    # Update the project fields, including company_id if changed
     for field, value in project.dict(exclude_unset=True).items():
         setattr(db_project, field, value)
-    
     db.commit()
     db.refresh(db_project)
     return db_project

@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, users, companies, projects, specs, lint_results, comments, notifications, reports, checklists, vendors, dashboard
+from app.api.v1.endpoints import auth, users, companies, projects, specs, lint_results, comments, notifications, reports, checklists, vendors, dashboard, search
 from app.api.v1.endpoints.settings import profile, api_keys, branding, notifications
 
 api_router = APIRouter()
@@ -18,4 +18,5 @@ api_router.include_router(dashboard.router, prefix="/dashboard", tags=["dashboar
 api_router.include_router(profile.router, prefix="/settings/profile", tags=["settings"])
 api_router.include_router(api_keys.router, prefix="/settings/api-keys", tags=["settings"])
 api_router.include_router(branding.router, prefix="/settings/branding", tags=["settings"])
-api_router.include_router(notifications.router, prefix="/settings/notifications", tags=["settings"]) 
+api_router.include_router(notifications.router, prefix="/settings/notifications", tags=["settings"])
+api_router.include_router(search.router, prefix="/search", tags=["search"]) 
