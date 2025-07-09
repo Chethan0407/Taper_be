@@ -35,6 +35,7 @@ class SpecInDBBase(SpecBase):
     author_id: int
     created_at: datetime
     updated_at: Optional[datetime] = None
+    fileUrl: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -43,4 +44,5 @@ class Spec(SpecInDBBase):
     pass
 
 class SpecWithLintResults(Spec):
-    lint_results: List[LintResult] = [] 
+    lint_results: List[LintResult] = []
+    fileUrl: Optional[str] = None 

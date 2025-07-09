@@ -145,3 +145,18 @@ def delete_spec(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"Failed to delete file: {str(e)}"
         ) 
+
+def generate_presigned_url(file_path: str, expires_in: int = 60 * 60 * 3) -> str:
+    """
+    Generate a presigned URL for the given S3 file path, valid for a few hours (default: 3 hours).
+    """
+    try:
+        url = s3_client.generate_presigned_url(
+            'get_object',
+            Params={'Bucket': settings.S3_BUCKET, 'Key': file_path},
+            ExpiresIn=expires_in
+        )
+        return url
+    except ClientError as e:
+        # Optionally log the error
+        return None 

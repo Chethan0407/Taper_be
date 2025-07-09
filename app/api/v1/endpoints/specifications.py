@@ -29,7 +29,7 @@ class SpecFile:
 spec_files: List[SpecFile] = []
 
 @router.post("/upload", status_code=201)
-def upload_specification(
+async def upload_specification(
     file: UploadFile = File(...),
     name: str = Form(...),
     status: SpecStatus = Form(SpecStatus.PENDING),
@@ -38,13 +38,17 @@ def upload_specification(
     allowed_types = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.openxmlformats-officedocument.presentationml.presentation"]
     if file.content_type not in allowed_types:
         raise HTTPException(status_code=400, detail="Invalid file type.")
-    if file.spool_max_size and file.spool_max_size > 50 * 1024 * 1024:
+    # Check file size (max 50MB)
+    contents = await file.read()
+    if len(contents) > 50 * 1024 * 1024:
         raise HTTPException(status_code=400, detail="File too large.")
+    # Reset file pointer for further use
+    file.file.seek(0)
     file_id = len(spec_files) + 1
     ext = os.path.splitext(file.filename)[1]
     save_path = os.path.join(UPLOAD_DIR, f"spec_{file_id}{ext}")
     with open(save_path, "wb") as buffer:
-        shutil.copyfileobj(file.file, buffer)
+        buffer.write(contents)
     spec = SpecFile(
         id=file_id,
         name=name,

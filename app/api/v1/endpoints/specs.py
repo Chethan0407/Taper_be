@@ -9,6 +9,7 @@ from app.schemas.spec import Spec, SpecCreate, SpecUpdate, SpecWithLintResults
 from app.schemas.lint_result import LintResult, LintResultCreate
 from app.schemas.user import UserOut
 from app.services.lint import lint_spec
+from app.crud.spec import generate_presigned_url
 
 router = APIRouter()
 
@@ -29,7 +30,13 @@ def read_specs(
         skip=skip,
         limit=limit
     )
-    return specs
+    # Add fileUrl to each spec
+    specs_with_url = []
+    for spec in specs:
+        spec_dict = spec.__dict__.copy()
+        spec_dict["fileUrl"] = generate_presigned_url(spec.file_path) if spec.file_path else None
+        specs_with_url.append(spec_dict)
+    return specs_with_url
 
 @router.post("/projects/{project_id}/specs", response_model=Spec)
 async def create_spec(
