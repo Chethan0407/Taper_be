@@ -157,7 +157,7 @@ class NotificationPreference(Base):
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
     # Relationships
-    user = relationship("User", back_populates="notification_preferences") 
+    user = relationship("User", back_populates="notification_preferences")
 
 class Specification(Base):
     __tablename__ = "specifications"
@@ -168,7 +168,9 @@ class Specification(Base):
     uploaded_on = Column(DateTime, default=datetime.utcnow)
     status = Column(String, default="Pending")
     assigned_to = Column(String, nullable=True)
-    file_path = Column(String, nullable=False) 
+    file_path = Column(String, nullable=False)
+    approved_by = Column(String, nullable=True)
+    rejected_by = Column(String, nullable=True)
 
 class Checklist(Base):
     __tablename__ = "checklists"
@@ -176,7 +178,7 @@ class Checklist(Base):
     name = Column(String, nullable=False)
     description = Column(String, nullable=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
-    updated_at = Column(DateTime(timezone=True), onupdate=func.now()) 
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
 
 class ChecklistTemplate(Base):
     __tablename__ = "checklist_templates"

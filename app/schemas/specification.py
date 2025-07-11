@@ -10,6 +10,8 @@ class SpecificationBase(BaseModel):
     status: Optional[str] = "Pending"
     assigned_to: Optional[str] = None
     file_path: str
+    approved_by: Optional[str] = None
+    rejected_by: Optional[str] = None
 
 class SpecificationCreate(SpecificationBase):
     pass
@@ -17,6 +19,8 @@ class SpecificationCreate(SpecificationBase):
 class SpecificationOut(SpecificationBase):
     id: UUID
     uploaded_on: datetime
+    approved_by: Optional[str] = None
+    rejected_by: Optional[str] = None
 
     class Config:
         orm_mode = True 

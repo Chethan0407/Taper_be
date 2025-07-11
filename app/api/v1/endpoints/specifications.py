@@ -87,6 +87,7 @@ def approve_specification(
     if not spec:
         raise HTTPException(status_code=404, detail="Spec not found.")
     spec.status = "Approved"
+    spec.approved_by = current_user.email
     db.commit()
     return {"msg": "Spec approved"}
 
@@ -100,6 +101,7 @@ def reject_specification(
     if not spec:
         raise HTTPException(status_code=404, detail="Spec not found.")
     spec.status = "Rejected"
+    spec.rejected_by = current_user.email
     db.commit()
     return {"msg": "Spec rejected"}
 
