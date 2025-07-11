@@ -1,5 +1,5 @@
 from typing import List
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 
 from app.api import deps
@@ -21,16 +21,20 @@ def read_companies(
     db: Session = Depends(deps.get_db),
     skip: int = 0,
     limit: int = 100,
+    search: str = Query(None, description="Search companies by name, description, or creator email"),
+    status: str = Query(None, description="Filter companies by status (Active, Inactive, etc.)"),
     current_user: UserOut = Depends(deps.get_current_user)
 ):
     """
-    Retrieve companies.
+    Retrieve companies, optionally filtered by search query and status.
     """
     companies = crud.get_companies(
         db=db,
         skip=skip,
         limit=limit,
-        owner_id=current_user.id
+        owner_id=current_user.id,
+        search=search,
+        status=status
     )
     result = []
     for company in companies:

@@ -1,6 +1,7 @@
 from typing import List, Optional
 from sqlalchemy.orm import Session
 from fastapi import HTTPException, status
+from sqlalchemy import or_
 
 from app.db.models import Company, Project
 from app.schemas.company import CompanyCreate, CompanyUpdate
@@ -12,11 +13,26 @@ def get_companies(
     db: Session, 
     skip: int = 0, 
     limit: int = 100,
-    owner_id: Optional[int] = None
+    owner_id: Optional[int] = None,
+    search: Optional[str] = None,
+    status: Optional[str] = None
 ) -> List[Company]:
     query = db.query(Company)
     if owner_id:
         query = query.filter(Company.owner_id == owner_id)
+    if search:
+        from app.db.models import User
+        query = query.join(User, Company.owner_id == User.id, isouter=True)
+        search_pattern = f"%{search}%"
+        query = query.filter(
+            or_(
+                Company.name.ilike(search_pattern),
+                Company.description.ilike(search_pattern),
+                User.email.ilike(search_pattern)
+            )
+        )
+    if status:
+        query = query.filter(Company.status == status)
     return query.offset(skip).limit(limit).all()
 
 def create_company(db: Session, company: CompanyCreate, owner_id: int) -> Company:
