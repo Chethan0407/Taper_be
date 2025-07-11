@@ -1,94 +1,121 @@
-from fastapi import APIRouter, UploadFile, File, Form, HTTPException, status, Query
-from fastapi.responses import FileResponse
+from fastapi import APIRouter, UploadFile, File, Form, Depends, HTTPException
+from sqlalchemy.orm import Session
+from app.db.session import get_db
+from app.schemas.specification import SpecificationOut, SpecificationCreate
+from app.crud.specification import create_specification, get_specifications, get_spec_by_file_path
+from app.utils.security import get_current_user
+from app.schemas.user import UserOut
 from typing import List, Optional
-from enum import Enum
-import shutil
 import os
+import uuid
+from fastapi.responses import FileResponse
+from app.db.models import Specification
 from datetime import datetime
+from uuid import UUID
 
 router = APIRouter()
 
 UPLOAD_DIR = "uploaded_specs"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
-class SpecStatus(str, Enum):
-    APPROVED = "Approved"
-    PENDING = "Pending"
-    REJECTED = "Rejected"
-
-class SpecFile:
-    def __init__(self, id, name, file_type, status, uploaded_by, created_at, path):
-        self.id = id
-        self.name = name
-        self.file_type = file_type
-        self.status = status
-        self.uploaded_by = uploaded_by
-        self.created_at = created_at
-        self.path = path
-
-spec_files: List[SpecFile] = []
-
-@router.post("/upload", status_code=201)
-async def upload_specification(
+@router.post("/upload-spec", response_model=SpecificationOut)
+async def upload_spec(
     file: UploadFile = File(...),
-    name: str = Form(...),
-    status: SpecStatus = Form(SpecStatus.PENDING),
-    uploaded_by: str = Form(...)
+    uploaded_by: str = Form(...),
+    assigned_to: str = Form(None),
+    current_user: UserOut = Depends(get_current_user),
+    db: Session = Depends(get_db)
 ):
-    allowed_types = ["application/pdf", "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.openxmlformats-officedocument.presentationml.presentation"]
-    if file.content_type not in allowed_types:
-        raise HTTPException(status_code=400, detail="Invalid file type.")
-    # Check file size (max 50MB)
     contents = await file.read()
-    if len(contents) > 50 * 1024 * 1024:
-        raise HTTPException(status_code=400, detail="File too large.")
-    # Reset file pointer for further use
-    file.file.seek(0)
-    file_id = len(spec_files) + 1
+    file_id = str(uuid.uuid4())
     ext = os.path.splitext(file.filename)[1]
-    save_path = os.path.join(UPLOAD_DIR, f"spec_{file_id}{ext}")
+    save_path = os.path.join(UPLOAD_DIR, f"{file_id}{ext}")
     with open(save_path, "wb") as buffer:
         buffer.write(contents)
-    spec = SpecFile(
-        id=file_id,
-        name=name,
-        file_type=file.content_type,
-        status=status.value,
+    spec_in = SpecificationCreate(
+        file_name=file.filename,
+        mime_type=file.content_type,
         uploaded_by=uploaded_by,
-        created_at=datetime.utcnow(),
-        path=save_path
+        assigned_to=assigned_to,
+        file_path=save_path
     )
-    spec_files.append(spec)
-    return {"id": spec.id, "name": spec.name, "file_type": spec.file_type, "status": spec.status, "uploaded_by": spec.uploaded_by, "created_at": spec.created_at}
+    return create_specification(db, spec_in)
 
-@router.get("/", response_model=List[dict])
-def list_specifications(status: Optional[SpecStatus] = Query(None)):
-    result = [
-        {"id": s.id, "name": s.name, "file_type": s.file_type, "status": s.status, "uploaded_by": s.uploaded_by, "created_at": s.created_at}
-        for s in spec_files if status is None or s.status == status.value
-    ]
-    return result
+@router.get("/", response_model=List[SpecificationOut])
+def list_specifications(
+    status: Optional[str] = None,
+    assigned_to: Optional[str] = None,
+    uploaded_by: Optional[str] = None,
+    file_type: Optional[str] = None,
+    date_from: Optional[datetime] = None,
+    date_to: Optional[datetime] = None,
+    sort_by: Optional[str] = None,
+    sort_order: Optional[str] = None,
+    current_user: UserOut = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    return get_specifications(
+        db,
+        status=status,
+        assigned_to=assigned_to,
+        uploaded_by=uploaded_by,
+        file_type=file_type,
+        date_from=date_from,
+        date_to=date_to,
+        sort_by=sort_by,
+        sort_order=sort_order
+    )
 
 @router.get("/{id}/download")
-def download_specification(id: int):
-    spec = next((s for s in spec_files if s.id == id), None)
+def download_specification(
+    id: str,
+    current_user: UserOut = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    spec = db.query(Specification).filter(Specification.id == id).first()
     if not spec:
         raise HTTPException(status_code=404, detail="Spec not found.")
-    return FileResponse(spec.path, filename=spec.name)
+    return FileResponse(spec.file_path, filename=spec.file_name)
+
+@router.post("/{id}/approve")
+def approve_specification(
+    id: str,
+    current_user: UserOut = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    spec = db.query(Specification).filter(Specification.id == id).first()
+    if not spec:
+        raise HTTPException(status_code=404, detail="Spec not found.")
+    spec.status = "Approved"
+    db.commit()
+    return {"msg": "Spec approved"}
+
+@router.post("/{id}/reject")
+def reject_specification(
+    id: str,
+    current_user: UserOut = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    spec = db.query(Specification).filter(Specification.id == id).first()
+    if not spec:
+        raise HTTPException(status_code=404, detail="Spec not found.")
+    spec.status = "Rejected"
+    db.commit()
+    return {"msg": "Spec rejected"}
 
 @router.delete("/{id}", status_code=204)
-def delete_specification(id: int):
-    global spec_files
-    spec = next((s for s in spec_files if s.id == id), None)
+def delete_specification(
+    id: UUID,
+    current_user: UserOut = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    spec = db.query(Specification).filter(Specification.id == id).first()
     if not spec:
         raise HTTPException(status_code=404, detail="Spec not found.")
     try:
-        os.remove(spec.path)
+        os.remove(spec.file_path)
     except Exception:
         pass
-    spec_files = [s for s in spec_files if s.id != id]
+    db.delete(spec)
+    db.commit()
     return
-
-@router.get("/statuses", response_model=List[str])
-def get_statuses():
-    return [e.value for e in SpecStatus] 

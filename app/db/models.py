@@ -4,6 +4,11 @@ from sqlalchemy.sql import func
 import enum
 from app.db.base_class import Base
 
+import uuid
+from sqlalchemy import Column, String, DateTime
+from sqlalchemy.dialects.postgresql import UUID
+from datetime import datetime
+
 # Association tables
 project_members = Table(
     "project_members",
@@ -153,3 +158,68 @@ class NotificationPreference(Base):
 
     # Relationships
     user = relationship("User", back_populates="notification_preferences") 
+
+class Specification(Base):
+    __tablename__ = "specifications"
+    id = Column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    file_name = Column(String, nullable=False)
+    mime_type = Column(String, nullable=False)
+    uploaded_by = Column(String, nullable=False)
+    uploaded_on = Column(DateTime, default=datetime.utcnow)
+    status = Column(String, default="Pending")
+    assigned_to = Column(String, nullable=True)
+    file_path = Column(String, nullable=False) 
+
+class Checklist(Base):
+    __tablename__ = "checklists"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now()) 
+
+class ChecklistTemplate(Base):
+    __tablename__ = "checklist_templates"
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String, nullable=False)
+    created_by = Column(String, nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    items = relationship("ChecklistItem", back_populates="template", cascade="all, delete-orphan")
+
+class ChecklistItem(Base):
+    __tablename__ = "checklist_items"
+    id = Column(Integer, primary_key=True, index=True)
+    template_id = Column(Integer, ForeignKey("checklist_templates.id"), nullable=False)
+    title = Column(String, nullable=False)
+    description = Column(String, nullable=True)
+    order = Column(Integer, nullable=False)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    template = relationship("ChecklistTemplate", back_populates="items")
+
+class ActiveChecklist(Base):
+    __tablename__ = "active_checklists"
+    id = Column(Integer, primary_key=True, index=True)
+    template_id = Column(Integer, ForeignKey("checklist_templates.id"), nullable=False)
+    linked_spec_id = Column(String, nullable=True)
+    created_by = Column(String, nullable=True)
+    status = Column(String, default="active")
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    items = relationship("ActiveChecklistItem", back_populates="checklist", cascade="all, delete-orphan")
+
+class ActiveChecklistItem(Base):
+    __tablename__ = "active_checklist_items"
+    id = Column(Integer, primary_key=True, index=True)
+    checklist_id = Column(Integer, ForeignKey("active_checklists.id"), nullable=False)
+    template_item_id = Column(Integer, ForeignKey("checklist_items.id"), nullable=False)
+    status = Column(String, default="pending")  # pending, done, in_progress
+    comment = Column(String, nullable=True)
+    evidence_file_path = Column(String, nullable=True)
+    assigned_to_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())
+    checklist = relationship("ActiveChecklist", back_populates="items")
+    template_item = relationship("ChecklistItem")
+    assigned_user = relationship("User") 

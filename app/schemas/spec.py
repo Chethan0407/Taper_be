@@ -44,5 +44,5 @@ class Spec(SpecInDBBase):
     pass
 
 class SpecWithLintResults(Spec):
-    lint_results: List[LintResult] = []
+    lint_results: List[LintResult] = [] 
     fileUrl: Optional[str] = None 

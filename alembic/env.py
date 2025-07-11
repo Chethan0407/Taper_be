@@ -4,7 +4,6 @@ from sqlalchemy import pool
 from alembic import context
 from app.core.config import settings
 from app.db.base_class import Base
-from app.db.models import User, Company, Project, Spec, LintResult, Comment
 
 config = context.config
 
